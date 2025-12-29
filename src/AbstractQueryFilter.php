@@ -165,10 +165,17 @@ abstract class AbstractQueryFilter extends RequestQueryBuilder
         $query = $this->apply($builder);
 
         if ($this->shouldSort()) {
-            $sorting = explode('|', $this->input('sort'));
-            $column = $sorting[0];
-            $direction = $sorting[1] ?? 'asc';
-            $query->orderBy($column, $direction);
+            // support for multiple sort columns
+            $sortExpressions = explode(',', $this->input('sort'));
+
+            foreach ($sortExpressions as $expression) {
+                $sorting = explode('|', $expression);
+
+                $column = $sorting[0];
+                $direction = $sorting[1] ?? 'asc';
+
+                $query->orderBy($column, $direction);
+            }
         }
 
         return $query->paginate(
