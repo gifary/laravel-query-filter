@@ -158,39 +158,24 @@ abstract class AbstractQueryFilter extends RequestQueryBuilder
      * Get the paginated results after applying the filters.
      *
      * @param  Builder  $builder
-     * @return Illuminate\Support\Collection
+
      */
     public function getPaginated(Builder $builder)
     {
-        $result = $this->apply($builder)->get();
+        $query = $this->apply($builder);
 
-        return $this->paginate(
-            $result,
-            $this->input('per_page', 15),
-            $this->input('page', 1)
-        );
-    }
+        if ($this->shouldSort()) {
+            $sorting = explode('|', $this->input('sort'));
+            $column = $sorting[0];
+            $direction = $sorting[1] ?? 'asc';
+            $query->orderBy($column, $direction);
+        }
 
-    /**
-     * Get the paginated results after applying the filters.
-     *
-     * @param  Illuminate\Database\Eloquent\Builder  $builder
-     * @return Illuminate\Support\Collection
-     */
-    public function paginate($items, $perPage = 15, $page = null, $options = [])
-    {
-        $page = $page ?: (Paginator::resolveCurrentPage() ?: 1);
-
-        $items = $items instanceof Collection ? $items : Collection::make($items);
-
-        $items = $this->shouldSort() ? $this->sortCollection($items) : $items;
-
-        return new LengthAwarePaginator(
-            $items->forPage($page, $perPage),
-            $items->count(),
-            $perPage,
-            $page,
-            $options
+        return $query->paginate(
+            (int) $this->input('per_page', 15),
+            ['*'],
+            'page',
+            (int) $this->input('page', 1)
         );
     }
 
