@@ -96,9 +96,12 @@ abstract class AbstractQueryFilter extends RequestQueryBuilder
      */
     protected function performColumnSearch(Builder $builder, $column, $text)
     {
-        $builder->orWhere(function ($query) use ($column, $text) {
+        $operator = config('query_filter.search_operator')
+            ?? config('query-filter-config.search_operator', 'like');
+
+        $builder->orWhere(function ($query) use ($column, $text, $operator) {
             foreach (explode(' ', $text) as $word) {
-                $query->where($column, 'like', "%{$word}%");
+                $query->where($column, $operator, "%{$word}%");
             }
         });
 

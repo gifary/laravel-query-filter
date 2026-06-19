@@ -252,4 +252,38 @@ class SearchFilterTest extends FeatureTest
             ->assertJsonFragment(['name' => $proj2->name])
             ->assertJsonMissing(['name' => $proj1->name]);
     }
+
+    /** @test */
+    public function it_can_search_using_configured_operator()
+    {
+        $this->withoutExceptionHandling();
+
+        config(['query_filter.search_operator' => 'like']);
+
+        $post1 = factory(Post::class)->create(['subject' => 'foobar barbazz']);
+        $post2 = factory(Post::class)->create(['subject' => 'bang bang']);
+
+        $response = $this->getJson(route('posts.index', ['search' => 'foobar']))
+            ->assertSuccessful();
+
+        $response->assertJsonFragment([
+            'subject' => $post1->subject,
+            'body' => $post1->body,
+        ]);
+
+        $response->assertJsonMissing([
+            'subject' => $post2->subject,
+            'body' => $post2->body,
+        ]);
+
+        config(['query_filter.search_operator' => 'ilike']);
+
+        $response = $this->getJson(route('posts.index', ['search' => 'FOOBAR']))
+            ->assertSuccessful();
+
+        $response->assertJsonFragment([
+            'subject' => $post1->subject,
+            'body' => $post1->body,
+        ]);
+    }
 }

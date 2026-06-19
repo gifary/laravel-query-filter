@@ -10,4 +10,8 @@ return [
 
     // The namespace to use for query loader classes.
     'loader_namespace' => 'App\Loaders',
+
+    // The search operator to use when performing queries.
+    // Use 'ilike' for case-insensitive searches in PostgreSQL.
+    'search_operator' => env('QUERY_FILTER_SEARCH_OPERATOR', 'like'),
 ];
