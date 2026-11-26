@@ -96,7 +96,48 @@ abstract class RequestQueryBuilder
      */
     protected function methodBasedFilter($key, $value)
     {
+        if ($this->isReservedMethod($key)) {
+            return;
+        }
+
         call_user_func_array([$this, $key], array_filter([$value]));
+    }
+
+    /**
+     * Methods on the package classes that may be invoked from the query string.
+     *
+     * @var array
+     */
+    protected $publicApiMethods = ['load', 'search'];
+
+    /**
+     * Determine if the given method may not be invoked from the query string.
+     *
+     * Only methods declared on the consuming application's filter class, or
+     * the package's public api methods, may be invoked from the query string,
+     * so request keys can never call the package's internal methods.
+     *
+     * @param  string  $key
+     * @return bool
+     */
+    protected function isReservedMethod($key)
+    {
+        if (in_array($key, $this->publicApiMethods)) {
+            return false;
+        }
+
+        try {
+            $declaringClass = (new \ReflectionMethod($this, $key))->getDeclaringClass()->getName();
+        } catch (\ReflectionException $e) {
+            return true;
+        }
+
+        return in_array($declaringClass, [
+            RequestQueryBuilder::class,
+            AbstractQueryFilter::class,
+            AbstractQueryLoader::class,
+            \Ambengers\QueryFilter\Concerns\HasParameters::class,
+        ]);
     }
 
     /**
