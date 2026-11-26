@@ -6,6 +6,7 @@
          convertErrorsToExceptions="true"
          convertNoticesToExceptions="true"
          convertWarningsToExceptions="true"
+         convertDeprecationsToExceptions="false"
          processIsolation="false"
          stopOnFailure="false">
     <testsuites>
@@ -15,5 +16,6 @@
     </testsuites>
     <php>
         <env name="APP_KEY" value="AckfSECXIvnK5r28gVIwUAxmbBxjTsmF"/>
+        <ini name="error_reporting" value="24575"/>
     </php>
 </phpunit>

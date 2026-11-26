@@ -285,6 +285,36 @@ Include soft deleted constraits when requesting for eager loaded models using th
 /posts/1?load=comments|onlyTrashed // comments will include only soft deleted models
 ```
 
+### Constraint Allowlisting
+
+For security reasons, the constraints passed via the query string are never called on the
+related query builder as-is. Instead, only the following constraint methods are applied:
+
+1. The safe, read-only defaults: `withTrashed`, `onlyTrashed` and `withoutTrashed`.
+2. Any query scope defined on the related model (e.g. `scopeApproved` on the `Comment` model
+   enables `?load=comments|approved`).
+3. Methods explicitly declared on the loader class within the `$loadableConstraints` array:
+
+    ```php
+    class PostLoader extends AbstractQueryLoader
+    {
+        protected $loadables = ['comments'];
+
+        protected $loadableConstraints = [
+            'comments' => ['latest', 'oldest'],
+        ];
+    }
+    ```
+
+    ```php
+    /posts/1?load=comments|latest
+    ```
+
+Any other constraint from the query string is ignored, so a read-only request can never run
+destructive queries — such as `truncate` or `delete` — against the related table. Likewise,
+only the relationships declared within the `$loadables` array may ever be loaded, and nested
+relationships (e.g. `?load=comments.relation`) are not loaded at all.
+
 ## Preventing Method Name Clash
 
 To customize the method name you call on your model to use the query filter, just update the value of the `method` key in the query_filter config file.

@@ -15,6 +15,35 @@ abstract class AbstractQueryLoader extends RequestQueryBuilder
     protected $loadables = [];
 
     /**
+     * Constraint methods that may be applied to an eager loaded relation
+     * via the query string, keyed by the relation name.
+     *
+     * Example:
+     *
+     *     protected $loadableConstraints = [
+     *         'comments' => ['approved', 'latest'],
+     *     ];
+     *
+     * Only the methods declared here, the safe defaults, and the query
+     * scopes defined on the related model are ever called. Any other
+     * constraint from the query string is ignored.
+     *
+     * @var array
+     */
+    protected $loadableConstraints = [];
+
+    /**
+     * Safe, read-only constraint methods allowed on any declared relation.
+     *
+     * @var array
+     */
+    protected $defaultConstraints = [
+        'withTrashed',
+        'onlyTrashed',
+        'withoutTrashed',
+    ];
+
+    /**
      * Set the builder instance.
      *
      * @param  Illuminate\Database\Eloquent\Builder  $builder
@@ -67,7 +96,7 @@ abstract class AbstractQueryLoader extends RequestQueryBuilder
             if (Str::contains($relation, '|')) {
                 [$relation, $constraints] = explode('|', $relation);
 
-                $results[$relation] = $this->parseConstraints(explode(',', $constraints));
+                $results[$relation] = $this->parseConstraints($relation, explode(',', $constraints));
 
                 continue;
             }
@@ -83,17 +112,52 @@ abstract class AbstractQueryLoader extends RequestQueryBuilder
     /**
      * Parse the constraints into callable query constrains.
      *
+     * Only methods declared in `$loadableConstraints` for the given relation,
+     * the safe default constraint methods, and the query scopes defined on the
+     * related model will ever be called. Any other constraint from the query
+     * string is ignored, so a read-only request can never run destructive
+     * queries such as `truncate` or `delete` on the related table.
+     *
+     * @param  string  $relation
      * @param  array  $constraints
      * @return callable
      */
-    protected function parseConstraints(array $constraints)
+    protected function parseConstraints($relation, array $constraints)
     {
-        return function ($query) use ($constraints) {
+        return function ($query) use ($relation, $constraints) {
+            $allowed = $this->allowedConstraints($relation, $query);
+
             foreach ($constraints as $constraint) {
                 $constraint = Str::camel($constraint);
+
+                if (! in_array($constraint, $allowed)) {
+                    continue;
+                }
 
                 $query->$constraint();
             }
         };
+    }
+
+    /**
+     * Resolve the constraint methods allowed for the given relation.
+     *
+     * @param  string  $relation
+     * @param  Illuminate\Database\Eloquent\Builder  $query
+     * @return array
+     */
+    protected function allowedConstraints($relation, $query)
+    {
+        $declared = (array) ($this->loadableConstraints[$relation] ?? []);
+
+        $scopes = [];
+
+        foreach ((new \ReflectionClass($query->getModel()))->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            if (Str::startsWith($method->name, 'scope')) {
+                $scopes[] = Str::camel(Str::substr($method->name, 5));
+            }
+        }
+
+        return array_merge($this->defaultConstraints, $declared, $scopes);
     }
 }
